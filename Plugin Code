@@ -1,0 +1,57 @@
+using System;
+using System.Collections.Generic;
+using System.Linq;
+using System.Text;
+using System.Threading.Tasks;
+using Microsoft.Xrm.Sdk;
+using Microsoft.Xrm.Sdk.Query;
+using System.Security.Principal;
+using System.Xml.Linq;
+
+using System.Collections;
+
+namespace FiscalCalendarQuarter
+{
+    public class SetDefaultCalendar : IPlugin
+    {
+        public void Execute(IServiceProvider serviceProvider)
+        {
+           
+            ITracingService tracingService =(ITracingService)serviceProvider.GetService(typeof(ITracingService));
+            IPluginExecutionContext context = (IPluginExecutionContext)serviceProvider.GetService(typeof(IPluginExecutionContext));
+            IOrganizationServiceFactory serviceFactory =(IOrganizationServiceFactory)serviceProvider.GetService(typeof(IOrganizationServiceFactory));
+            IOrganizationService service = serviceFactory.CreateOrganizationService(context.UserId);
+
+           
+            if (context.InputParameters.Contains("Target") &&
+                context.InputParameters["Target"] is Entity)
+            {
+                // Obtain the target entity from the input parameters.  
+                Entity entity = (Entity)context.InputParameters["Target"];
+
+                try
+                {
+                   
+                    if (entity.Attributes.Contains("msdyn_fiscalcalendaryear") && entity.Attributes.Contains("msdyn_quarter"))
+
+                    {       //Get The Lookup Value
+                            EntityReference ficalyear_Lookup = (EntityReference)entity.Attributes["msdyn_fiscalcalendaryear"];
+                            Guid fiscalcalendaryear_Id = ficalyear_Lookup.Id;
+                            var FiscalYearName = service.Retrieve("msdyn_fiscalcalendaryear", fiscalcalendaryear_Id, new ColumnSet(new string[] { "msdyn_name" }));
+                            //get the quarter using dropdown
+                            String quarter = entity.FormattedValues["msdyn_quarter"].ToString();
+                            var quarter1 = quarter.Substring(quarter.Length-1,1).ToString();
+                            var quarter2 = "Q" + quarter1;
+                            entity["msdyn_periodname"] = FiscalYearName["msdyn_name"] +" "+quarter2;
+                    }
+
+                }
+                catch (Exception ex)
+                {
+                    tracingService.Trace("MyPlugin: {0}", ex.ToString());
+                    throw;
+                }
+            }
+        }
+    }
+}
